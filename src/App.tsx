@@ -22,8 +22,9 @@ import ScheduleForm from './components/ScheduleForm';
 import OpenWASettings from './components/OpenWASettings';
 import OpenWALogin from './components/OpenWALogin';
 import ConnectionStatus from './components/ConnectionStatus';
+import WhatsAppPage from './components/WhatsAppPage';
 
-export type Page = 'dashboard' | 'customers' | 'templates' | 'schedules';
+export type Page = 'dashboard' | 'customers' | 'templates' | 'schedules' | 'whatsapp';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
@@ -214,6 +215,12 @@ function App() {
             waConnected={waConnected}
           />
         );
+      case 'whatsapp':
+        return (
+          <WhatsAppPage
+            onConnectionChange={handleConnectionChange}
+          />
+        );
       default:
         return null;
     }
@@ -235,6 +242,8 @@ function App() {
         onNavigate={(page: Page) => { setCurrentPage(page); setSidebarOpen(false); }}
         isOpen={sidebarOpen}
         waConnected={waConnected}
+        onLoginClick={() => setShowOpenWALogin(true)}
+        onSettingsClick={() => setShowOpenWASettings(true)}
       />
 
       {/* Main Content */}
@@ -253,7 +262,8 @@ function App() {
             <h1 className="text-lg font-semibold text-gray-800 capitalize">
               {currentPage === 'dashboard' ? '📊 Dashboard' : 
                currentPage === 'customers' ? '👥 Pelanggan' :
-               currentPage === 'templates' ? '📝 Template Pesan' : '📅 Jadwal WhatsApp'}
+               currentPage === 'templates' ? '📝 Template Pesan' : 
+               currentPage === 'schedules' ? '📅 Jadwal WhatsApp' : '📱 WhatsApp'}
             </h1>
           </div>
           

@@ -5,14 +5,17 @@ interface SidebarProps {
   onNavigate: (page: Page) => void;
   isOpen: boolean;
   waConnected?: boolean;
+  onLoginClick?: () => void;
+  onSettingsClick?: () => void;
 }
 
-export default function Sidebar({ currentPage, onNavigate, isOpen, waConnected }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, isOpen, waConnected, onLoginClick, onSettingsClick }: SidebarProps) {
   const menuItems: { page: Page; label: string; icon: string }[] = [
     { page: 'dashboard', label: 'Dashboard', icon: '📊' },
     { page: 'customers', label: 'Pelanggan', icon: '👥' },
     { page: 'templates', label: 'Template Pesan', icon: '📝' },
     { page: 'schedules', label: 'Jadwal WhatsApp', icon: '📅' },
+    { page: 'whatsapp', label: 'WhatsApp', icon: '📱' },
   ];
 
   return (
@@ -45,10 +48,29 @@ export default function Sidebar({ currentPage, onNavigate, isOpen, waConnected }
             }`}
           >
             <span className="text-xl">{item.icon}</span>
-            <span className="font-medium">{item.label}</span>
+            <span className="font-medium flex-1">{item.label}</span>
+            {/* WhatsApp connection indicator */}
+            {item.page === 'whatsapp' && (
+              <div className={`w-2.5 h-2.5 rounded-full ${
+                waConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+              }`} />
+            )}
           </button>
         ))}
       </nav>
+
+      {/* Quick Login Button */}
+      {!waConnected && (
+        <div className="px-4 mb-4">
+          <button
+            onClick={onLoginClick}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-green-800 rounded-lg font-medium hover:bg-green-50 transition-colors shadow-lg"
+          >
+            <span>📱</span>
+            <span>Login WhatsApp</span>
+          </button>
+        </div>
+      )}
 
       <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-green-700">
         <div className="bg-green-700/50 rounded-lg p-4">
