@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { Customer } from '../types';
 import { openWhatsApp, formatDate } from '../utils/storage';
 
+import { sendWhatsAppMessage, isAutoSendAvailable } from '../services/messageSender';
+
 interface CustomerListProps {
   customers: Customer[];
   onAdd: () => void;
   onEdit: (customer: Customer) => void;
   onDelete: (id: string) => void;
+  waConnected?: boolean;
 }
 
-export default function CustomerList({ customers, onAdd, onEdit, onDelete }: CustomerListProps) {
+export default function CustomerList({ customers, onAdd, onEdit, onDelete, waConnected }: CustomerListProps) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -23,9 +26,16 @@ export default function CustomerList({ customers, onAdd, onEdit, onDelete }: Cus
     return matchSearch && matchStatus;
   });
 
-  const handleSendWhatsApp = (customer: Customer) => {
+  const handleSendWhatsApp = async (customer: Customer) => {
     const message = quickMessage || `Halo ${customer.name}, ada yang bisa kami bantu?`;
-    openWhatsApp(customer.phone, message);
+    if (waConnected) {
+      const result = await sendWhatsAppMessage(customer, message);
+      if (result.method === 'openwa') {
+        alert('✅ ' + result.message);
+      }
+    } else {
+      openWhatsApp(customer.phone, message);
+    }
   };
 
   return (

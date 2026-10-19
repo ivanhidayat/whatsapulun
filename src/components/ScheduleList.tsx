@@ -1,5 +1,6 @@
 import { Schedule, Customer, MessageTemplate } from '../types';
 import { openWhatsApp, formatDateTime } from '../utils/storage';
+import { sendWhatsAppMessage } from '../services/messageSender';
 
 interface ScheduleListProps {
   schedules: Schedule[];
@@ -8,6 +9,7 @@ interface ScheduleListProps {
   onAdd: () => void;
   onUpdateStatus: (id: string, status: Schedule['status']) => void;
   onDelete: (id: string) => void;
+  waConnected?: boolean;
 }
 
 export default function ScheduleList({
@@ -17,6 +19,7 @@ export default function ScheduleList({
   onAdd,
   onUpdateStatus,
   onDelete,
+  waConnected,
 }: ScheduleListProps) {
   const pendingSchedules = schedules
     .filter(s => s.status === 'pending')
@@ -34,21 +37,36 @@ export default function ScheduleList({
     .filter(s => s.status === 'cancelled')
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const handleSendNow = (schedule: Schedule) => {
+  const handleSendNow = async (schedule: Schedule) => {
     const customer = customers.find(c => c.id === schedule.customerId);
     const template = templates.find(t => t.id === schedule.templateId);
     
     if (!customer) return;
 
-    let message = schedule.customMessage || template?.content || '';
-    message = message
-      .replace(/{nama}/g, customer.name)
-      .replace(/{perusahaan}/g, customer.company)
-      .replace(/{waktu}/g, new Date().getHours() < 12 ? 'pagi' : new Date().getHours() < 18 ? 'siang' : 'malam')
-      .replace(/{produk}/g, 'Produk Kami');
+    if (waConnected) {
+      try {
+        const result = await sendWhatsAppMessage(
+          customer, 
+          template || schedule.customMessage || ''
+        );
+        if (result.success) {
+          onUpdateStatus(schedule.id, 'sent');
+          alert('✅ Pesan berhasil dikirim otomatis via OpenWA!');
+        }
+      } catch (error: any) {
+        alert('❌ Gagal: ' + error.message);
+      }
+    } else {
+      let message = schedule.customMessage || template?.content || '';
+      message = message
+        .replace(/{nama}/g, customer.name)
+        .replace(/{perusahaan}/g, customer.company)
+        .replace(/{waktu}/g, new Date().getHours() < 12 ? 'pagi' : new Date().getHours() < 18 ? 'siang' : 'malam')
+        .replace(/{produk}/g, 'Produk Kami');
 
-    openWhatsApp(customer.phone, message);
-    onUpdateStatus(schedule.id, 'sent');
+      openWhatsApp(customer.phone, message);
+      onUpdateStatus(schedule.id, 'sent');
+    }
   };
 
   const getStatusBadge = (status: Schedule['status']) => {
@@ -118,9 +136,13 @@ export default function ScheduleList({
           <div className="mt-3 flex items-center gap-2">
             <button
               onClick={() => handleSendNow(schedule)}
-              className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 transition-colors"
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                waConnected
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
             >
-              📱 Kirim Sekarang
+              {waConnected ? '🤖 Kirim Otomatis' : '📱 Buka WhatsApp'}
             </button>
             <button
               onClick={() => onUpdateStatus(schedule.id, 'cancelled')}
@@ -160,15 +182,21 @@ export default function ScheduleList({
       </div>
 
       {/* Info Banner */}
-      <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200 p-4">
+      <div className={`rounded-xl border p-4 ${
+        waConnected 
+          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
+          : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+      }`}>
         <div className="flex items-start gap-3">
-          <span className="text-2xl">💡</span>
+          <span className="text-2xl">{waConnected ? '🤖' : '💡'}</span>
           <div>
-            <h3 className="font-medium text-green-800 text-sm">Cara Kerja Jadwal WhatsApp</h3>
-            <p className="text-xs text-green-700 mt-1">
-              Jadwalkan pengiriman pesan WhatsApp untuk follow-up pelanggan. Saat waktu tiba, 
-              Anda akan diingatkan dan bisa langsung mengirim pesan melalui WhatsApp. 
-              Klik "Kirim Sekarang" untuk membuka WhatsApp dengan pesan yang sudah disiapkan.
+            <h3 className={`font-medium text-sm ${waConnected ? 'text-green-800' : 'text-blue-800'}`}>
+              {waConnected ? 'Mode: Kirim Otomatis (OpenWA)' : 'Mode: Manual (WhatsApp Link)'}
+            </h3>
+            <p className={`text-xs mt-1 ${waConnected ? 'text-green-700' : 'text-blue-700'}`}>
+              {waConnected 
+                ? 'Pesan akan dikirim secara OTOMATIS melalui OpenWA API tanpa perlu membuka WhatsApp. Klik "Kirim Otomatis" untuk mengirim langsung.'
+                : 'Jadwalkan pengiriman pesan WhatsApp untuk follow-up pelanggan. Saat waktu tiba, klik "Buka WhatsApp" untuk mengirim pesan. Hubungkan OpenWA untuk mode otomatis.'}
             </p>
           </div>
         </div>

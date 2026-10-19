@@ -10,6 +10,7 @@ import {
   generateId,
   getDefaultTemplates,
 } from './utils/storage';
+import { getOpenWAConfig, isOpenWAConnected } from './services/openwa';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import CustomerList from './components/CustomerList';
@@ -18,6 +19,9 @@ import ScheduleList from './components/ScheduleList';
 import CustomerForm from './components/CustomerForm';
 import TemplateForm from './components/TemplateForm';
 import ScheduleForm from './components/ScheduleForm';
+import OpenWASettings from './components/OpenWASettings';
+import OpenWALogin from './components/OpenWALogin';
+import ConnectionStatus from './components/ConnectionStatus';
 
 export type Page = 'dashboard' | 'customers' | 'templates' | 'schedules';
 
@@ -29,9 +33,12 @@ function App() {
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [showTemplateForm, setShowTemplateForm] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [showOpenWASettings, setShowOpenWASettings] = useState(false);
+  const [showOpenWALogin, setShowOpenWALogin] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [waConnected, setWaConnected] = useState(false);
 
   useEffect(() => {
     const storedCustomers = getCustomers();
@@ -49,6 +56,7 @@ function App() {
     }
     
     setSchedules(storedSchedules);
+    setWaConnected(isOpenWAConnected());
   }, []);
 
   // Check for due schedules
@@ -62,12 +70,12 @@ function App() {
       });
 
       if (dueSchedules.length > 0) {
-        const names = dueSchedules.map(s => {
-          const customer = customers.find(c => c.id === s.customerId);
-          return customer?.name || 'Unknown';
-        }).join(', ');
-        
         if (Notification.permission === 'granted') {
+          const names = dueSchedules.map(s => {
+            const customer = customers.find(c => c.id === s.customerId);
+            return customer?.name || 'Unknown';
+          }).join(', ');
+          
           new Notification('📱 WhatsApp CRM Reminder', {
             body: `Jadwal WhatsApp untuk: ${names}`,
           });
@@ -77,6 +85,10 @@ function App() {
 
     return () => clearInterval(interval);
   }, [schedules, customers]);
+
+  const handleConnectionChange = () => {
+    setWaConnected(isOpenWAConnected());
+  };
 
   const handleAddCustomer = (customer: Omit<Customer, 'id' | 'createdAt' | 'lastContact'>) => {
     const newCustomer: Customer = {
@@ -165,6 +177,9 @@ function App() {
             templates={templates}
             schedules={schedules}
             onNavigate={setCurrentPage}
+            waConnected={waConnected}
+            onOpenSettings={() => setShowOpenWASettings(true)}
+            onOpenLogin={() => setShowOpenWALogin(true)}
           />
         );
       case 'customers':
@@ -174,6 +189,7 @@ function App() {
             onAdd={() => { setEditingCustomer(null); setShowCustomerForm(true); }}
             onEdit={(c) => { setEditingCustomer(c); setShowCustomerForm(true); }}
             onDelete={handleDeleteCustomer}
+            waConnected={waConnected}
           />
         );
       case 'templates':
@@ -183,6 +199,7 @@ function App() {
             onAdd={() => { setEditingTemplate(null); setShowTemplateForm(true); }}
             onEdit={(t) => { setEditingTemplate(t); setShowTemplateForm(true); }}
             onDelete={handleDeleteTemplate}
+            waConnected={waConnected}
           />
         );
       case 'schedules':
@@ -194,6 +211,7 @@ function App() {
             onAdd={() => setShowScheduleForm(true)}
             onUpdateStatus={handleUpdateScheduleStatus}
             onDelete={handleDeleteSchedule}
+            waConnected={waConnected}
           />
         );
       default:
@@ -202,7 +220,7 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -214,32 +232,37 @@ function App() {
       {/* Sidebar */}
       <Sidebar
         currentPage={currentPage}
-        onNavigate={(page) => { setCurrentPage(page); setSidebarOpen(false); }}
+        onNavigate={(page: Page) => { setCurrentPage(page); setSidebarOpen(false); }}
         isOpen={sidebarOpen}
+        waConnected={waConnected}
       />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
         <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between lg:px-6">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <h1 className="text-lg font-semibold text-gray-800 capitalize">
-            {currentPage === 'dashboard' ? '📊 Dashboard' : 
-             currentPage === 'customers' ? '👥 Pelanggan' :
-             currentPage === 'templates' ? '📝 Template Pesan' : '📅 Jadwal WhatsApp'}
-          </h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500 hidden sm:block">WhatsApp CRM</span>
-            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-bold">W</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h1 className="text-lg font-semibold text-gray-800 capitalize">
+              {currentPage === 'dashboard' ? '📊 Dashboard' : 
+               currentPage === 'customers' ? '👥 Pelanggan' :
+               currentPage === 'templates' ? '📝 Template Pesan' : '📅 Jadwal WhatsApp'}
+            </h1>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* OpenWA Connection Status */}
+            <ConnectionStatus
+              onSettingsClick={() => setShowOpenWASettings(true)}
+              onLoginClick={() => setShowOpenWALogin(true)}
+            />
           </div>
         </header>
 
@@ -270,6 +293,18 @@ function App() {
           templates={templates}
           onSave={handleAddSchedule}
           onClose={() => setShowScheduleForm(false)}
+        />
+      )}
+      {showOpenWASettings && (
+        <OpenWASettings
+          onClose={() => setShowOpenWASettings(false)}
+          onConnectionChange={handleConnectionChange}
+        />
+      )}
+      {showOpenWALogin && (
+        <OpenWALogin
+          onClose={() => setShowOpenWALogin(false)}
+          onConnected={handleConnectionChange}
         />
       )}
     </div>

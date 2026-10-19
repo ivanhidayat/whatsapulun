@@ -1,11 +1,14 @@
 import { MessageTemplate } from '../types';
 import { openWhatsApp } from '../utils/storage';
+import { sendWhatsAppMessage } from '../services/messageSender';
+import { openWAService } from '../services/openwa';
 
 interface TemplateListProps {
   templates: MessageTemplate[];
   onAdd: () => void;
   onEdit: (template: MessageTemplate) => void;
   onDelete: (id: string) => void;
+  waConnected?: boolean;
 }
 
 const categoryLabels: Record<string, { label: string; color: string; icon: string }> = {
@@ -16,7 +19,7 @@ const categoryLabels: Record<string, { label: string; color: string; icon: strin
   custom: { label: 'Custom', color: 'bg-gray-100 text-gray-700', icon: '✏️' },
 };
 
-export default function TemplateList({ templates, onAdd, onEdit, onDelete }: TemplateListProps) {
+export default function TemplateList({ templates, onAdd, onEdit, onDelete, waConnected }: TemplateListProps) {
   const handlePreview = (template: MessageTemplate) => {
     const preview = template.content
       .replace(/{nama}/g, 'John Doe')
@@ -26,7 +29,7 @@ export default function TemplateList({ templates, onAdd, onEdit, onDelete }: Tem
     alert(`Preview Template:\n\n${preview}`);
   };
 
-  const handleSendTemplate = (template: MessageTemplate) => {
+  const handleSendTemplate = async (template: MessageTemplate) => {
     const phone = prompt('Masukkan nomor WhatsApp (contoh: 628123456789):');
     if (phone) {
       const message = template.content
@@ -34,7 +37,18 @@ export default function TemplateList({ templates, onAdd, onEdit, onDelete }: Tem
         .replace(/{perusahaan}/g, 'Perusahaan Kami')
         .replace(/{waktu}/g, 'pagi')
         .replace(/{produk}/g, 'Produk Kami');
-      openWhatsApp(phone, message);
+      
+      if (waConnected) {
+        try {
+          await openWAService.sendTextMessage(phone, message);
+          alert('✅ Pesan berhasil dikirim via OpenWA!');
+        } catch (error: any) {
+          alert('❌ Gagal kirim via OpenWA: ' + error.message + '\nMembuka WhatsApp link sebagai fallback...');
+          openWhatsApp(phone, message);
+        }
+      } else {
+        openWhatsApp(phone, message);
+      }
     }
   };
 

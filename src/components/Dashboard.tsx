@@ -6,9 +6,12 @@ interface DashboardProps {
   templates: MessageTemplate[];
   schedules: Schedule[];
   onNavigate: (page: Page) => void;
+  waConnected?: boolean;
+  onOpenSettings?: () => void;
+  onOpenLogin?: () => void;
 }
 
-export default function Dashboard({ customers, templates, schedules, onNavigate }: DashboardProps) {
+export default function Dashboard({ customers, templates, schedules, onNavigate, waConnected, onOpenSettings, onOpenLogin }: DashboardProps) {
   const activeCustomers = customers.filter(c => c.status === 'active').length;
   const prospectCustomers = customers.filter(c => c.status === 'prospect').length;
   const pendingSchedules = schedules.filter(s => s.status === 'pending').length;
@@ -185,6 +188,57 @@ export default function Dashboard({ customers, templates, schedules, onNavigate 
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* OpenWA Connection Status */}
+      <div className={`rounded-xl p-5 border ${
+        waConnected 
+          ? 'bg-green-50 border-green-200' 
+          : 'bg-orange-50 border-orange-200'
+      }`}>
+        <div className="flex items-start gap-4">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+            waConnected ? 'bg-green-100' : 'bg-orange-100'
+          }`}>
+            <span className="text-2xl">{waConnected ? '🟢' : '🟠'}</span>
+          </div>
+          <div className="flex-1">
+            <h3 className={`font-bold ${waConnected ? 'text-green-800' : 'text-orange-800'}`}>
+              {waConnected ? '✅ WhatsApp Terhubung (OpenWA)' : '⚠️ WhatsApp Belum Terhubung'}
+            </h3>
+            <p className={`text-sm mt-1 ${waConnected ? 'text-green-700' : 'text-orange-700'}`}>
+              {waConnected 
+                ? 'Pesan akan dikirim secara otomatis melalui OpenWA API. Anda bisa mengirim pesan tanpa membuka WhatsApp secara manual.'
+                : 'Hubungkan WhatsApp Anda melalui OpenWA untuk mengirim pesan secara otomatis. Atau gunakan mode manual (link wa.me).'}
+            </p>
+            <div className="flex gap-2 mt-3">
+              {!waConnected && (
+                <>
+                  <button
+                    onClick={onOpenLogin}
+                    className="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs font-medium hover:bg-orange-700 transition-colors"
+                  >
+                    📱 Login WhatsApp
+                  </button>
+                  <button
+                    onClick={onOpenSettings}
+                    className="px-3 py-1.5 bg-white text-orange-700 border border-orange-300 rounded-lg text-xs font-medium hover:bg-orange-50 transition-colors"
+                  >
+                    ⚙️ Pengaturan OpenWA
+                  </button>
+                </>
+              )}
+              {waConnected && (
+                <button
+                  onClick={onOpenSettings}
+                  className="px-3 py-1.5 bg-white text-green-700 border border-green-300 rounded-lg text-xs font-medium hover:bg-green-50 transition-colors"
+                >
+                  ⚙️ Kelola Koneksi
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

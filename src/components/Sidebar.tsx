@@ -4,9 +4,10 @@ interface SidebarProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
   isOpen: boolean;
+  waConnected?: boolean;
 }
 
-export default function Sidebar({ currentPage, onNavigate, isOpen }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, isOpen, waConnected }: SidebarProps) {
   const menuItems: { page: Page; label: string; icon: string }[] = [
     { page: 'dashboard', label: 'Dashboard', icon: '📊' },
     { page: 'customers', label: 'Pelanggan', icon: '👥' },
